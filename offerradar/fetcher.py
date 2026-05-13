@@ -32,7 +32,7 @@ def fetch_job_emails(host: str, user: str, password: str) -> list[tuple[str, str
             _, msg_data = imap.fetch(num, "(RFC822)")
             raw = msg_data[0][1]
             msg = email_lib.message_from_bytes(raw)
-            sender = msg.get("From", "")
+            sender = str(msg.get("From", ""))
             if any(domain in sender for domain in SENDER_FILTER):
                 html = _get_html_body(msg)
                 if html:
