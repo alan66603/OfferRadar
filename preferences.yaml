@@ -1,0 +1,31 @@
+locations:
+  - Hsinchu
+  - Taipei
+  - Remote
+
+work_types:
+  - remote
+  - hybrid
+  - onsite
+
+job_type: internship          # 'full-time' | 'internship' | 'both'
+
+salary_min_twd: null          # set to integer to filter by annual salary, null = no filter
+
+visa_sponsorship_required: false
+
+keywords_must:                # job must contain at least one of these
+  - Python
+  - Machine Learning
+  - ML
+
+keywords_nice:                # boost score if present
+  - AWS
+  - PyTorch
+  - LLM
+  - NLP
+
+digest_email: alan66603@gmail.com
+max_digest_jobs: 10
+llm_score_threshold: 6.0      # minimum Claude score to include in digest
+kw_score_threshold: 0.2       # minimum keyword score to pass to Layer 2

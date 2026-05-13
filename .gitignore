@@ -1,1 +1,9 @@
+.env
+jobs.db
+resume.pdf
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
 /docs
