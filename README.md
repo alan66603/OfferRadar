@@ -16,7 +16,7 @@
 │                                         │
 │  1. Gmail Fetcher                       │
 │     └─ IMAP 抓 LinkedIn/Glassdoor/Indeed│
-│        的未讀 job alert 信              │
+│        近 N 天的 job alert 信           │
 │                                         │
 │  2. Email Parser                        │
 │     └─ 各 site 專屬 parser 萃取:        │
@@ -130,7 +130,7 @@ Fetcher 失敗時不中斷 pipeline——`description` 留空，Matcher 降權�
 
 ### Layer 2：Claude API 語意評分
 
-對 Layer 1 通過的職缺（上限 20 筆），呼叫 Claude API：
+對 Layer 1 通過的所有職缺逐一呼叫 Claude API（`claude-haiku-4-5`）：
 
 - 輸入：履歷摘要 + 職缺詳情 + 偏好設定
 - 輸出：`llm_score`（0–10）+ `llm_reason`（一句話推薦理由）
@@ -220,7 +220,43 @@ OfferRadar/
 ## 快速開始
 
 ```bash
+python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env         # 填入 Gmail App Password 和 Claude API key
+cp .env.example .env         # 填入 Gmail App Password 和 Anthropic API key
+# 將履歷放置於專案根目錄
+cp /path/to/your/resume.pdf resume.pdf
 python main.py
 ```
+
+### .env 設定
+
+```
+GMAIL_IMAP_HOST=imap.gmail.com
+GMAIL_USER=your@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx   # Gmail App Password（非帳號密碼）
+
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your@gmail.com
+SMTP_PASSWORD=xxxx xxxx xxxx xxxx
+
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+> Gmail App Password 申請：Google 帳戶 → 安全性 → 兩步驟驗證 → 應用程式密碼
+
+### 調整篩選條件
+
+編輯 `preferences.yaml`：
+
+| 參數 | 說明 |
+|------|------|
+| `locations` | 接受的工作地點（部分符合即通過） |
+| `work_types` | `remote` / `hybrid` / `onsite` |
+| `keywords_must` | Layer 1 必要關鍵字（至少命中一個） |
+| `keywords_nice` | Layer 1 加分關鍵字 |
+| `kw_score_threshold` | Layer 1 關鍵字命中率門檻（預設 0.2） |
+| `llm_score_threshold` | Layer 2 Claude 評分門檻（預設 6.0） |
+| `max_digest_jobs` | 每封 digest 最多幾筆（預設 10） |
+
+抓取天數預設為近 3 天，可在呼叫 `fetch_job_emails()` 時傳入 `days_back` 調整。
