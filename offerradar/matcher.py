@@ -1,4 +1,5 @@
 import json
+import re
 import anthropic
 from offerradar.models import JobPost
 
@@ -43,9 +44,25 @@ def layer1_filter(jobs: list[JobPost], resume_keywords: list[str], prefs: dict) 
     return passed
 
 
+def _parse_llm_response(text: str) -> dict:
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    # model may wrap JSON in markdown or add surrounding text
+    m = re.search(r'\{[^{}]*"score"[^{}]*\}', text, re.DOTALL)
+    if m:
+        try:
+            return json.loads(m.group())
+        except json.JSONDecodeError:
+            pass
+    print(f"  [warn] Unparseable Claude response: {text[:200]!r}")
+    return {}
+
+
 def layer2_score(jobs: list[JobPost], resume_text: str, prefs: dict) -> list[JobPost]:
     client = anthropic.Anthropic()
-    for job in jobs[:20]:
+    for job in jobs:
         job_summary = (
             f"Title: {job.title}\n"
             f"Company: {job.company}\n"
@@ -61,17 +78,17 @@ def layer2_score(jobs: list[JobPost], resume_text: str, prefs: dict) -> list[Job
             f"  Nice-to-have keywords: {prefs.get('keywords_nice', [])}\n"
             f"  Visa sponsorship required: {prefs.get('visa_sponsorship_required', False)}"
         )
-        message = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=200,
-            system=_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_msg}],
-        )
         try:
-            result = json.loads(message.content[0].text)
+            message = client.messages.create(
+                model="claude-haiku-4-5-20251001",
+                max_tokens=200,
+                system=_SYSTEM_PROMPT,
+                messages=[{"role": "user", "content": user_msg}],
+            )
+            result = _parse_llm_response(message.content[0].text)
             job.llm_score = float(result.get("score", 0))
             job.llm_reason = result.get("reason", "")
-        except (json.JSONDecodeError, KeyError, IndexError):
-            job.llm_score = 0.0
-            job.llm_reason = ""
+        except Exception as e:
+            print(f"  [error] Claude API call failed for '{job.title}': {e}")
+            job.llm_score = None
     return jobs

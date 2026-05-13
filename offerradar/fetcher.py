@@ -1,5 +1,6 @@
 import imaplib
 import email as email_lib
+from datetime import date, timedelta
 
 SENDER_FILTER = {
     "linkedin.com",
@@ -21,19 +22,23 @@ def _get_html_body(msg) -> str:
     return ""
 
 
-def fetch_job_emails(host: str, user: str, password: str) -> list[tuple[str, str]]:
+def fetch_job_emails(host: str, user: str, password: str, days_back: int = 3) -> list[tuple[str, str]]:
+    since = (date.today() - timedelta(days=days_back)).strftime("%d-%b-%Y")
     results = []
+    seen_ids: set[bytes] = set()
     with imaplib.IMAP4_SSL(host) as imap:
         imap.login(user, password)
         imap.select("INBOX")
-        _, data = imap.search(None, "UNSEEN")
-        ids = data[0].split()
-        for num in ids:
-            _, msg_data = imap.fetch(num, "(RFC822)")
-            raw = msg_data[0][1]
-            msg = email_lib.message_from_bytes(raw)
-            sender = str(msg.get("From", ""))
-            if any(domain in sender for domain in SENDER_FILTER):
+        for domain in SENDER_FILTER:
+            _, data = imap.search(None, f'(SINCE "{since}" FROM "{domain}")')
+            for num in data[0].split():
+                if num in seen_ids:
+                    continue
+                seen_ids.add(num)
+                _, msg_data = imap.fetch(num, "(RFC822)")
+                raw = msg_data[0][1]
+                msg = email_lib.message_from_bytes(raw)
+                sender = str(msg.get("From", ""))
                 html = _get_html_body(msg)
                 if html:
                     results.append((sender, html))

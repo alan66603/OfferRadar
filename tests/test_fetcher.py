@@ -41,6 +41,8 @@ def test_fetch_returns_html_from_known_senders():
 def test_fetch_filters_unknown_senders():
     raw = _make_raw_email("newsletter@random.com", "<html>ads</html>")
     mock_imap = _make_mock_imap([raw])
+    # IMAP FROM-domain search returns no matches for non-job-site sender
+    mock_imap.search = MagicMock(return_value=("OK", [b""]))
     with patch("offerradar.fetcher.imaplib.IMAP4_SSL", return_value=mock_imap):
         results = fetch_job_emails("imap.gmail.com", "user@gmail.com", "pass")
     assert results == []

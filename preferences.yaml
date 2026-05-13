@@ -1,6 +1,8 @@
 locations:
   - Hsinchu
   - Taipei
+  - Melbourne
+  - Singapore
   - Remote
 
 work_types:
@@ -15,15 +17,22 @@ salary_min_twd: null          # set to integer to filter by annual salary, null 
 visa_sponsorship_required: false
 
 keywords_must:                # job must contain at least one of these
+  - Software
   - Python
-  - Machine Learning
-  - ML
 
 keywords_nice:                # boost score if present
   - AWS
-  - PyTorch
-  - LLM
-  - NLP
+  - GCP
+  - Azure
+  - DevOps
+  - Cloud
+  - CI/CD
+  - GitHub
+  - Terraform
+  - Ansible
+  - Docker
+  - Kubernetes
+  - Infrastructure
 
 digest_email: alan66603@gmail.com
 max_digest_jobs: 10

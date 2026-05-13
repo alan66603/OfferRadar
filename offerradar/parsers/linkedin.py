@@ -18,32 +18,39 @@ def parse_linkedin_email(html: str) -> list[JobPost]:
     jobs = []
     fetched_at = datetime.now(timezone.utc).isoformat()
 
+    seen_urls: set[str] = set()
     for a_tag in soup.find_all("a", href=True):
         href = a_tag["href"]
         if "linkedin.com" not in href or "/jobs/view/" not in href:
             continue
-        title = a_tag.get_text(strip=True)
+
+        url = _extract_clean_url(href)
+        if not url or url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        # Use only the first non-empty line as title to avoid capturing
+        # company/location/badge text that may be nested inside the same anchor
+        raw_text = a_tag.get_text(separator="\n", strip=True)
+        title = next((l for l in raw_text.splitlines() if l), "")
         if not title:
             continue
 
-        url = _extract_clean_url(href)
-        if not url:
-            continue
-
         parent = a_tag.parent
-        text = parent.get_text(separator="\n", strip=True)
-        lines = [l for l in text.splitlines() if l and l != title]
+        parent_text = parent.get_text(separator="\n", strip=True)
+        lines = [l for l in parent_text.splitlines() if l and l != title]
 
         company, location = "", ""
-        if lines:
-            first = lines[0]
-            if "·" in first:
-                parts = first.split("·", 1)
+        for line in lines:
+            if "·" in line:
+                parts = line.split("·", 1)
                 company = parts[0].strip()
                 location = parts[1].strip()
-            else:
-                company = first
-                location = lines[1] if len(lines) > 1 else ""
+                break
+            # skip badge-like lines (short words, no spaces typical of real company names)
+            if len(line.split()) >= 2:
+                company = line
+                break
 
         jobs.append(JobPost(
             id=make_job_id(url),
