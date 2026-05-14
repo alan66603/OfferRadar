@@ -10,7 +10,7 @@ def download_file(bucket: str, key: str, local_path: str) -> bool:
         s3.download_file(bucket, key, local_path)
         return True
     except ClientError as e:
-        if e.response["Error"]["Code"] == "404":
+        if e.response["Error"]["Code"] in ("404", "NoSuchKey"):
             return False
         raise
 
