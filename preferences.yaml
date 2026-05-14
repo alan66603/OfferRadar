@@ -16,7 +16,7 @@ salary_min_twd: null          # set to integer to filter by annual salary, null 
 
 visa_sponsorship_required: false
 
-max_years_experience: 2       # 過濾掉要求 2+ years 以上經驗的職缺，null = 不過濾
+max_years_experience: 2       # exclude jobs requiring 2+ years experience; null = off
 
 keywords_must:                # job must contain at least one of these
   - Cloud
@@ -53,7 +53,7 @@ keywords_nice:                # boost score if present
   - MLOps
   - AI
 
-keywords_exclude:             # 包含任一關鍵字即直接排除
+keywords_exclude:             # immediately discard jobs containing any of these
   - Firmware
   - Hardware
   - FPGA
@@ -65,7 +65,7 @@ keywords_exclude:             # 包含任一關鍵字即直接排除
   - Security Clearance
   - Must be PR
 
-days_back: 1                  # 抓幾天內的 job alert
+days_back: 1                  # how many days of emails to fetch
 
 digest_email: alan66603@gmail.com
 max_digest_jobs: 10
