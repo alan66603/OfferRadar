@@ -52,6 +52,6 @@ def fetch_job_emails(
                 html = _get_html_body(msg)
                 if html:
                     results.append((sender, html))
-                if use_unseen:
-                    imap.store(num, "+FLAGS", "\\Seen")
+                    if use_unseen:
+                        imap.store(num, "+FLAGS", "\\Seen")
     return results
