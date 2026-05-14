@@ -65,7 +65,7 @@ keywords_exclude:             # 包含任一關鍵字即直接排除
   - Security Clearance
   - Must be PR
 
-days_back: 5                  # 抓幾天內的 job alert
+days_back: 1                  # 抓幾天內的 job alert
 
 digest_email: alan66603@gmail.com
 max_digest_jobs: 10

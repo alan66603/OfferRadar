@@ -22,11 +22,14 @@ LINKEDIN_HTML = """
 
 GLASSDOOR_HTML = """
 <html><body>
-<div class="job-listing">
-  <a href="https://www.glassdoor.com/job-listing/gd-job-1">Backend Engineer</a>
-  <span class="employer-name">TSMC</span>
-  <span class="location">Hsinchu, Taiwan</span>
-</div>
+<a href="https://www.glassdoor.com/partner/jobListing.htm?jobListingId=123456&src=GD_JOB_AD" style="text-decoration:none">
+  <table><tbody><tr><td>
+    <span style="font-size:12px;font-weight:400">TSMC</span>
+  </td></tr></tbody></table>
+  <table><tbody><tr><td>
+    <p style="font-size:14px;line-height:1.4;margin:0;font-weight:600">Backend Engineer</p>
+  </td></tr></tbody></table>
+</a>
 </body></html>
 """
 
@@ -56,8 +59,10 @@ def test_parse_linkedin_email_returns_jobs():
 
 def test_parse_glassdoor_email_returns_jobs():
     jobs = parse_email("noreply@glassdoor.com", GLASSDOOR_HTML)
-    assert len(jobs) >= 1
+    assert len(jobs) == 1
     assert jobs[0].title == "Backend Engineer"
+    assert jobs[0].company == "TSMC"
+    assert jobs[0].url == "https://www.glassdoor.com/job-listing/j?jl=123456"
     assert jobs[0].source == "glassdoor"
 
 
