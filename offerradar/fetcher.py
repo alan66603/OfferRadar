@@ -22,7 +22,7 @@ def _get_html_body(msg) -> str:
     return ""
 
 
-def fetch_job_emails(host: str, user: str, password: str, days_back: int = 3) -> list[tuple[str, str]]:
+def fetch_job_emails(host: str, user: str, password: str, days_back: int = 1) -> list[tuple[str, str]]:
     since = (date.today() - timedelta(days=days_back)).strftime("%d-%b-%Y")
     results = []
     seen_ids: set[bytes] = set()

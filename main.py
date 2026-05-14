@@ -26,13 +26,15 @@ def run_pipeline():
     resume = extract_resume(RESUME_PATH)
     print(f"  Keywords extracted: {', '.join(resume['keywords'][:10])}")
 
-    print("\nConnecting to Gmail IMAP...")
+    days_back = prefs.get("days_back", 3)
+    print(f"\nConnecting to Gmail IMAP (past {days_back} day(s))...")
     raw_emails = fetch_job_emails(
         host=os.environ["GMAIL_IMAP_HOST"],
         user=os.environ["GMAIL_USER"],
         password=os.environ["GMAIL_APP_PASSWORD"],
+        days_back=days_back,
     )
-    print(f"  Fetched {len(raw_emails)} job alert email(s) from the past 7 days.")
+    print(f"  Fetched {len(raw_emails)} job alert email(s).")
 
     print("\nParsing emails...")
     all_jobs = []

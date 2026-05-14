@@ -16,23 +16,56 @@ salary_min_twd: null          # set to integer to filter by annual salary, null 
 
 visa_sponsorship_required: false
 
+max_years_experience: 2       # 過濾掉要求 2+ years 以上經驗的職缺，null = 不過濾
+
 keywords_must:                # job must contain at least one of these
-  - Software
+  - Cloud
+  - DevOps
+  - Platform
+  - Infrastructure
+  - Software Engineer
+  - Backend
   - Python
+  - Full Stack
 
 keywords_nice:                # boost score if present
   - AWS
   - GCP
   - Azure
-  - DevOps
-  - Cloud
-  - CI/CD
-  - GitHub
   - Terraform
   - Ansible
   - Docker
   - Kubernetes
-  - Infrastructure
+  - Helm
+  - CI/CD
+  - GitHub Actions
+  - GitLab CI
+  - Prometheus
+  - Grafana
+  - Linux
+  - FastAPI
+  - Node.js
+  - React
+  - MongoDB
+  - PostgreSQL
+  - Data Pipeline
+  - Data Engineering
+  - MLOps
+  - AI
+
+keywords_exclude:             # 包含任一關鍵字即直接排除
+  - Firmware
+  - Hardware
+  - FPGA
+  - VHDL
+  - Mainframe
+  - COBOL
+  - Australian Citizen
+  - Permanent Resident Only
+  - Security Clearance
+  - Must be PR
+
+days_back: 5                  # 抓幾天內的 job alert
 
 digest_email: alan66603@gmail.com
 max_digest_jobs: 10

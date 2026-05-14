@@ -10,6 +10,9 @@ _SYSTEM_PROMPT = (
 )
 
 
+_EXP_RE = re.compile(r'(\d+)\+?\s*(?:to\s*\d+\s*)?years?', re.IGNORECASE)
+
+
 def _kw_score(text: str, keywords: list[str]) -> float:
     if not keywords or not text:
         return 0.0
@@ -18,10 +21,19 @@ def _kw_score(text: str, keywords: list[str]) -> float:
     return round(hits / len(keywords), 3)
 
 
+def _exceeds_experience(text: str, max_years: int) -> bool:
+    for m in _EXP_RE.finditer(text):
+        if int(m.group(1)) >= max_years:
+            return True
+    return False
+
+
 def layer1_filter(jobs: list[JobPost], resume_keywords: list[str], prefs: dict) -> list[JobPost]:
     threshold = prefs.get("kw_score_threshold", 0.2)
     allowed_locations = {loc.lower() for loc in prefs.get("locations", [])}
     allowed_work_types = {wt.lower() for wt in prefs.get("work_types", [])}
+    max_exp = prefs.get("max_years_experience")
+    exclude_kws = [kw.lower() for kw in prefs.get("keywords_exclude", [])]
 
     passed = []
     for job in jobs:
@@ -34,6 +46,13 @@ def layer1_filter(jobs: list[JobPost], resume_keywords: list[str], prefs: dict) 
                 continue
 
         search_text = (job.description or "") + " " + job.title
+        if max_exp is not None and _exceeds_experience(search_text, max_exp):
+            continue
+
+        search_lower = search_text.lower()
+        if any(kw in search_lower for kw in exclude_kws):
+            continue
+
         score = _kw_score(search_text, resume_keywords)
         if score < threshold:
             continue
