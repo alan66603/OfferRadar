@@ -34,3 +34,18 @@ def test_send_telegram_message_contains_title_and_score():
     assert "ML Engineer" in payload["text"]
     assert "8.5" in payload["text"]
     assert payload["chat_id"] == "123"
+
+
+def test_send_telegram_null_score_shows_question_mark():
+    job = JobPost(
+        id="xyz999", source="seek", title="Data Scientist",
+        company="Acme", location="Melbourne",
+        url="https://www.seek.com.au/job/1/",
+        fetched_at="2026-05-14T00:00:00+00:00",
+        llm_score=None, llm_reason=None,
+    )
+    with patch("offerradar.notifier.requests.post") as mock_post:
+        mock_post.return_value = MagicMock()
+        send_telegram([job], bot_token="TOKEN", chat_id="123")
+    payload = mock_post.call_args.kwargs["json"]
+    assert "?" in payload["text"]
