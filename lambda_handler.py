@@ -26,7 +26,8 @@ def handler(event, context):
         try:
             run_pipeline(db_path=db_path, resume_path=resume_path, use_unseen=True)
         finally:
-            print("Uploading jobs.db to S3...")
-            upload_file(S3_BUCKET, DB_KEY, db_path)
+            if os.path.exists(db_path):
+                print("Uploading jobs.db to S3...")
+                upload_file(S3_BUCKET, DB_KEY, db_path)
 
     return {"statusCode": 200, "body": json.dumps("Pipeline complete")}
