@@ -10,16 +10,29 @@ FUNCTION_NAME="offerradar"
 SCHEDULE="rate(4 hours)"
 ZIP="offerradar_lambda.zip"
 
+: "${GMAIL_USER:?GMAIL_USER must be set — run: source .env or export GMAIL_USER=...}"
+: "${GMAIL_APP_PASSWORD:?GMAIL_APP_PASSWORD must be set}"
+: "${ANTHROPIC_API_KEY:?ANTHROPIC_API_KEY must be set}"
+: "${TELEGRAM_BOT_TOKEN:?TELEGRAM_BOT_TOKEN must be set}"
+: "${TELEGRAM_CHAT_ID:?TELEGRAM_CHAT_ID must be set}"
+
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "AWS account: $ACCOUNT_ID  region: $REGION"
 
 echo ""
 echo "=== 1/5  S3 bucket ==="
-aws s3api create-bucket \
-    --bucket "$BUCKET" \
-    --region "$REGION" \
-    --create-bucket-configuration LocationConstraint="$REGION" 2>/dev/null \
-    && echo "Created: $BUCKET" || echo "Already exists: $BUCKET"
+if [[ "$REGION" == "us-east-1" ]]; then
+    aws s3api create-bucket \
+        --bucket "$BUCKET" \
+        --region "$REGION" 2>/dev/null \
+        && echo "Created: $BUCKET" || echo "Already exists: $BUCKET"
+else
+    aws s3api create-bucket \
+        --bucket "$BUCKET" \
+        --region "$REGION" \
+        --create-bucket-configuration LocationConstraint="$REGION" 2>/dev/null \
+        && echo "Created: $BUCKET" || echo "Already exists: $BUCKET"
+fi
 
 echo "Uploading resume.pdf..."
 aws s3 cp resume.pdf "s3://$BUCKET/resume.pdf"

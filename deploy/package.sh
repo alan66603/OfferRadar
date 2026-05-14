@@ -2,6 +2,9 @@
 # deploy/package.sh — builds the Lambda deployment zip
 set -e
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$REPO_ROOT"
+
 PACKAGE_DIR="build/lambda_package"
 OUTPUT="offerradar_lambda.zip"
 
@@ -10,7 +13,7 @@ rm -rf "$PACKAGE_DIR" "$OUTPUT"
 mkdir -p "$PACKAGE_DIR"
 
 echo "Installing dependencies..."
-pip install -r requirements.txt --target "$PACKAGE_DIR" --quiet
+pip3 install -r requirements.txt --target "$PACKAGE_DIR" --quiet
 # Remove boto3/botocore — the Lambda runtime already provides them
 rm -rf "$PACKAGE_DIR/boto3" "$PACKAGE_DIR/botocore" "$PACKAGE_DIR/s3transfer"
 
