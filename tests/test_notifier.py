@@ -13,11 +13,13 @@ def _make_job():
     )
 
 
-def test_send_telegram_posts_one_message_per_job():
+def test_send_telegram_sends_one_message_for_multiple_jobs():
     with patch("offerradar.notifier.requests.post") as mock_post:
         mock_post.return_value = MagicMock(status_code=200)
         send_telegram([_make_job(), _make_job()], bot_token="TOKEN", chat_id="123")
-    assert mock_post.call_count == 2
+    assert mock_post.call_count == 1
+    payload = mock_post.call_args.kwargs["json"]
+    assert "2 new job(s)" in payload["text"]
 
 
 def test_send_telegram_empty_list_makes_no_calls():
