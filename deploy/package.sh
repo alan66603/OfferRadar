@@ -12,8 +12,14 @@ echo "Cleaning build directory..."
 rm -rf "$PACKAGE_DIR" "$OUTPUT"
 mkdir -p "$PACKAGE_DIR"
 
-echo "Installing dependencies..."
-pip3 install -r requirements.txt --target "$PACKAGE_DIR" --quiet
+echo "Installing dependencies (linux/x86_64 wheels)..."
+pip3 install -r requirements.txt \
+    --target "$PACKAGE_DIR" \
+    --platform manylinux2014_x86_64 \
+    --implementation cp \
+    --python-version 312 \
+    --only-binary=:all: \
+    --quiet
 # Remove boto3/botocore — the Lambda runtime already provides them
 rm -rf "$PACKAGE_DIR/boto3" "$PACKAGE_DIR/botocore" "$PACKAGE_DIR/s3transfer"
 

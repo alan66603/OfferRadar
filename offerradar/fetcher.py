@@ -27,8 +27,10 @@ def fetch_job_emails(
     days_back: int = 1, use_unseen: bool = False,
 ) -> list[tuple[str, str]]:
     if use_unseen:
+        since = (date.today() - timedelta(days=days_back)).strftime("%d-%b-%Y")
         def _criteria(domain: str) -> str:
-            return f'(UNSEEN FROM "{domain}")'
+            return f'(UNSEEN SINCE "{since}" FROM "{domain}")'
+
     else:
         since = (date.today() - timedelta(days=days_back)).strftime("%d-%b-%Y")
         def _criteria(domain: str) -> str:

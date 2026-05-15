@@ -9,3 +9,4 @@ venv/
 /docs
 build/
 offerradar_lambda.zip
+/.claude
