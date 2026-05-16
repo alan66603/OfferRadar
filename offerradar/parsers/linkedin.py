@@ -27,7 +27,6 @@ def parse_linkedin_email(html: str) -> list[JobPost]:
         url = _extract_clean_url(href)
         if not url or url in seen_urls:
             continue
-        seen_urls.add(url)
 
         # Use only the first non-empty line as title to avoid capturing
         # company/location/badge text that may be nested inside the same anchor
@@ -35,6 +34,8 @@ def parse_linkedin_email(html: str) -> list[JobPost]:
         title = next((l for l in raw_text.splitlines() if l), "")
         if not title:
             continue
+
+        seen_urls.add(url)
 
         parent = a_tag.parent
         parent_text = parent.get_text(separator="\n", strip=True)

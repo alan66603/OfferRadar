@@ -1,6 +1,6 @@
 # OfferRadar
 
-A personal job alert pipeline that reads Gmail job alert emails (LinkedIn, Glassdoor, Indeed), matches them against your resume, applies your preferences, and sends a scored HTML digest via email.
+A personal job alert pipeline that reads Gmail job alert emails (LinkedIn, Glassdoor, Indeed), matches them against your resume, scores them with Claude, and pushes results to Telegram.
 
 ---
 
@@ -15,7 +15,7 @@ preferences.yaml + resume.pdf
 │                                         │
 │  1. Gmail Fetcher                       │
 │     └─ IMAP search by sender domain     │
-│        for the past N days              │
+│        (UNSEEN + SINCE N days)          │
 │                                         │
 │  2. Email Parser                        │
 │     └─ Per-source parsers extract:      │
@@ -32,8 +32,8 @@ preferences.yaml + resume.pdf
 │     Layer 1: keyword + prefs hard filter│
 │     Layer 2: Claude API semantic score  │
 │                                         │
-│  6. Digest Composer                     │
-│     └─ Builds HTML email and sends it   │
+│  6. Telegram Notifier                   │
+│     └─ Sends one message per job        │
 │                                         │
 │  7. SQLite (jobs.db)                    │
 │     └─ Stores all jobs, scores, status  │
@@ -42,14 +42,12 @@ preferences.yaml + resume.pdf
 
 Each module has one responsibility and can be tested independently.
 
-### Deployment path
+### Deployment
 
 | Stage | Runtime | Database | Scheduler |
 |-------|---------|----------|-----------|
-| MVP (local) | Python script | SQLite | `launchd` / cron |
-| Cloud | AWS Lambda | DynamoDB | EventBridge |
-
-All database access goes through a repository abstraction — swapping the backend requires no changes to pipeline logic.
+| Local | Python script | SQLite (local) | manual / cron |
+| Cloud | AWS Lambda | SQLite on S3 | EventBridge (every 4 hours) |
 
 ---
 
@@ -75,8 +73,6 @@ CREATE TABLE jobs (
 );
 ```
 
-The `status` field is reserved for a future web dashboard.
-
 ---
 
 ## Email Parsers
@@ -88,27 +84,6 @@ Each source has a dedicated parser built with **BeautifulSoup**. The email stage
 | LinkedIn | Extracts `job_id` from `/comm/` token URLs via regex, reconstructs public URL; parses title, company, city |
 | Glassdoor | Finds `jobListingId` in `partner/jobListing.htm` links, reconstructs canonical URL; extracts title and company from styled spans |
 | Indeed | Parses `<td>` table rows for title, company, city, and job URL |
-
-**LinkedIn URL handling:** Email links are `/comm/` URLs with tracking tokens that require login. The parser extracts the numeric `job_id` and builds a public URL:
-
-```python
-match = re.search(r'/jobs/view/(\d+)', email_href)
-clean_url = f"https://www.linkedin.com/jobs/view/{match.group(1)}/"
-```
-
----
-
-## Job Page Fetcher
-
-After parsing emails, the fetcher scrapes each job page to fill in description, salary, and work type.
-
-| Source | Method | Notes |
-|--------|--------|-------|
-| LinkedIn | `requests` + BeautifulSoup with `User-Agent` header | Public job pages work without login; JS popups don't affect `requests` |
-| Indeed | `requests` + BeautifulSoup | Lenient public pages |
-| Glassdoor | `requests` with fallback | Some content requires login; Claude scores with limited info on fallback |
-
-If a fetch fails, `description` is left empty and the job is scored with lower weight — the pipeline never aborts.
 
 ---
 
@@ -130,23 +105,21 @@ Calls `claude-haiku-4-5` for each Layer 1 candidate:
 
 - **Input:** resume excerpt + job details + preferences
 - **Output:** `llm_score` (0–10) + `llm_reason` (one sentence)
-- Jobs with `llm_score >= llm_score_threshold` are included in the digest, sorted by score descending
+- Jobs with `llm_score >= llm_score_threshold` are sent to Telegram, sorted by score descending
 
 ---
 
-## Digest Format
-
-Each job card in the HTML email:
+## Telegram Message Format
 
 ```
-[Company] — Job Title
-📍 Location  |  💼 work_type  |  💰 Salary (if available)
+Company — Job Title
+📍 Location  |  💼 work_type
 ⭐ Score: 8.5/10
-Reason: Strong match on Python and AWS; no visa sponsorship required.
-Apply →  [link]
+Strong match on Python and AWS.
+Apply →
 ```
 
-Up to `max_digest_jobs` jobs per digest, sorted by `llm_score`.
+Up to `max_digest_jobs` jobs per run, sorted by `llm_score`.
 
 ---
 
@@ -182,9 +155,8 @@ keywords_exclude:             # immediately discard if any match
   - Firmware
   - Security Clearance
 
-days_back: 3                  # how many days of emails to fetch
+days_back: 1                  # how many days of emails to fetch (also limits Lambda UNSEEN scan)
 
-digest_email: your@email.com
 max_digest_jobs: 10
 llm_score_threshold: 6.0
 kw_score_threshold: 0.2
@@ -200,6 +172,7 @@ OfferRadar/
 ├── preferences.yaml         # filtering config
 ├── jobs.db                  # SQLite database (git-ignored)
 ├── .env                     # credentials (git-ignored)
+├── lambda_handler.py        # AWS Lambda entry point
 │
 ├── offerradar/
 │   ├── fetcher.py           # Gmail IMAP fetcher
@@ -209,9 +182,14 @@ OfferRadar/
 │   │   └── indeed.py
 │   ├── page_fetcher.py      # job page scraper
 │   ├── matcher.py           # two-layer matching logic
-│   ├── digest.py            # HTML email composer + SMTP sender
+│   ├── notifier.py          # Telegram sender
+│   ├── db_sync.py           # S3 download/upload for jobs.db
 │   ├── repository.py        # SQLite CRUD abstraction
 │   └── models.py            # JobPost dataclass
+│
+├── deploy/
+│   ├── package.sh           # builds Lambda deployment zip
+│   └── setup_aws.sh         # one-time AWS resource creation
 │
 ├── main.py                  # pipeline entry point
 ├── tests/
@@ -221,15 +199,26 @@ OfferRadar/
 
 ---
 
-## Quick Start
+## Local Quick Start
 
 ```bash
 python -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
 cp /path/to/your/resume.pdf resume.pdf
+# edit .env with your credentials
 python main.py
 ```
+
+---
+
+## Cloud Deployment (AWS Lambda)
+
+### Prerequisites
+
+- AWS CLI installed and configured (`aws configure`)
+- Telegram bot created via `@BotFather` — copy the token
+- Send any message to your bot, then visit `https://api.telegram.org/bot<TOKEN>/getUpdates` to find your `chat.id`
 
 ### .env
 
@@ -238,12 +227,69 @@ GMAIL_IMAP_HOST=imap.gmail.com
 GMAIL_USER=your@gmail.com
 GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
 
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your@gmail.com
-SMTP_PASSWORD=xxxx xxxx xxxx xxxx
-
 ANTHROPIC_API_KEY=sk-ant-...
+
+TELEGRAM_BOT_TOKEN=123456789:AAxxxxxx
+TELEGRAM_CHAT_ID=987654321
+
+S3_BUCKET=offerradar-state
 ```
 
 > Gmail App Password: Google Account → Security → 2-Step Verification → App passwords
+
+### First deploy
+
+```bash
+# 1. Build the Lambda zip (downloads Linux x86_64 wheels)
+source venv/bin/activate
+./deploy/package.sh
+
+# 2. Create all AWS resources (S3, IAM role, Lambda, EventBridge)
+export $(grep -v '^#' .env | xargs)
+./deploy/setup_aws.sh
+```
+
+This creates:
+- S3 bucket for `jobs.db` and `resume.pdf` persistence
+- IAM role with Lambda execution + S3 read/write/list permissions
+- Lambda function (Python 3.12, 10 min timeout, 512 MB)
+- EventBridge rule triggering every 4 hours on weekdays
+
+### Test invoke
+
+```bash
+aws lambda invoke \
+    --function-name offerradar \
+    --log-type Tail \
+    --query 'LogResult' \
+    --output text \
+    /tmp/response.json | base64 -d
+```
+
+### Redeploy after code or config changes
+
+```bash
+./deploy/package.sh
+aws lambda update-function-code \
+    --function-name offerradar \
+    --zip-file fileb://offerradar_lambda.zip
+```
+
+### Update environment variables only
+
+```bash
+# Write vars to a JSON file first to handle special characters (e.g. spaces in App Password)
+aws lambda update-function-configuration \
+    --function-name offerradar \
+    --environment file:///path/to/env.json
+```
+
+### Reset the database
+
+```bash
+# Delete jobs.db from S3 (Lambda will start fresh on next run)
+aws s3 rm s3://offerradar-state/jobs.db
+
+# Or locally:
+rm jobs.db
+```

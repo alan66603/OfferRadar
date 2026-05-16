@@ -22,15 +22,25 @@ def _get_html_body(msg) -> str:
     return ""
 
 
-def fetch_job_emails(host: str, user: str, password: str, days_back: int = 1) -> list[tuple[str, str]]:
+def fetch_job_emails(
+    host: str, user: str, password: str,
+    days_back: int = 1, use_unseen: bool = False,
+) -> list[tuple[str, str]]:
     since = (date.today() - timedelta(days=days_back)).strftime("%d-%b-%Y")
+    if use_unseen:
+        def _criteria(domain: str) -> str:
+            return f'(UNSEEN SINCE "{since}" FROM "{domain}")'
+    else:
+        def _criteria(domain: str) -> str:
+            return f'(SINCE "{since}" FROM "{domain}")'
+
     results = []
     seen_ids: set[bytes] = set()
     with imaplib.IMAP4_SSL(host) as imap:
         imap.login(user, password)
         imap.select("INBOX")
         for domain in SENDER_FILTER:
-            _, data = imap.search(None, f'(SINCE "{since}" FROM "{domain}")')
+            _, data = imap.search(None, _criteria(domain))
             for num in data[0].split():
                 if num in seen_ids:
                     continue
@@ -42,4 +52,6 @@ def fetch_job_emails(host: str, user: str, password: str, days_back: int = 1) ->
                 html = _get_html_body(msg)
                 if html:
                     results.append((sender, html))
+                    if use_unseen:
+                        imap.store(num, "+FLAGS", "\\Seen")
     return results

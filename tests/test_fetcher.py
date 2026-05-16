@@ -46,3 +46,11 @@ def test_fetch_filters_unknown_senders():
     with patch("offerradar.fetcher.imaplib.IMAP4_SSL", return_value=mock_imap):
         results = fetch_job_emails("imap.gmail.com", "user@gmail.com", "pass")
     assert results == []
+
+
+def test_fetch_unseen_marks_emails_as_seen():
+    raw = _make_raw_email("jobs-noreply@linkedin.com", "<html>jobs</html>")
+    mock_imap = _make_mock_imap([raw])
+    with patch("offerradar.fetcher.imaplib.IMAP4_SSL", return_value=mock_imap):
+        fetch_job_emails("imap.gmail.com", "user@gmail.com", "pass", use_unseen=True)
+    mock_imap.store.assert_called_once_with(b"1", "+FLAGS", "\\Seen")

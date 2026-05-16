@@ -1,3 +1,4 @@
+# main.py
 import os
 import yaml
 from dotenv import load_dotenv
@@ -7,7 +8,7 @@ from offerradar.page_fetcher import fetch_job_details
 from offerradar.repository import JobRepository
 from offerradar.resume_parser import extract_resume
 from offerradar.matcher import layer1_filter, layer2_score
-from offerradar.digest import compose_html, send_digest
+from offerradar.notifier import send_telegram
 
 load_dotenv()
 
@@ -16,23 +17,29 @@ RESUME_PATH = "resume.pdf"
 PREFS_PATH = "preferences.yaml"
 
 
-def run_pipeline():
+def run_pipeline(
+    db_path: str = DB_PATH,
+    resume_path: str = RESUME_PATH,
+    use_unseen: bool = False,
+) -> None:
     with open(PREFS_PATH) as f:
         prefs = yaml.safe_load(f)
 
-    repo = JobRepository(DB_PATH)
+    repo = JobRepository(db_path)
 
     print("Parsing resume...")
-    resume = extract_resume(RESUME_PATH)
+    resume = extract_resume(resume_path)
     print(f"  Keywords extracted: {', '.join(resume['keywords'][:10])}")
 
-    days_back = prefs.get("days_back", 3)
-    print(f"\nConnecting to Gmail IMAP (past {days_back} day(s))...")
+    days_back = prefs.get("days_back", 1)
+    mode = "UNSEEN" if use_unseen else f"past {days_back} day(s)"
+    print(f"\nConnecting to Gmail IMAP ({mode})...")
     raw_emails = fetch_job_emails(
         host=os.environ["GMAIL_IMAP_HOST"],
         user=os.environ["GMAIL_USER"],
         password=os.environ["GMAIL_APP_PASSWORD"],
         days_back=days_back,
+        use_unseen=use_unseen,
     )
     print(f"  Fetched {len(raw_emails)} job alert email(s).")
 
@@ -66,7 +73,7 @@ def run_pipeline():
     print(f"  {len(candidates)}/{len(enriched)} job(s) passed.")
 
     if not candidates:
-        print("\nNo candidates after Layer 1. No digest sent.")
+        print("\nNo candidates after Layer 1. No notifications sent.")
         return
 
     print(f"\nLayer 2: Claude scoring {len(candidates)} job(s)...")
@@ -82,29 +89,23 @@ def run_pipeline():
         key=lambda j: j.llm_score or 0,
         reverse=True,
     )[:max_jobs]
-    print(f"\n  {len(digest_jobs)} job(s) scored >= {threshold} (digest threshold).")
+    print(f"\n  {len(digest_jobs)} job(s) scored >= {threshold}.")
 
     for job in scored:
         if job.llm_score is not None:
             repo.update_scores(job.id, job.kw_score or 0, job.llm_score, job.llm_reason or "")
 
     if digest_jobs:
-        print(f"\nSending digest to {prefs['digest_email']}...")
-        html = compose_html(digest_jobs)
-        send_digest(
-            html=html,
-            to_email=prefs["digest_email"],
-            smtp_config={
-                "host": os.environ["SMTP_HOST"],
-                "port": int(os.environ["SMTP_PORT"]),
-                "user": os.environ["SMTP_USER"],
-                "password": os.environ["SMTP_PASSWORD"],
-            },
+        print(f"\nSending {len(digest_jobs)} job(s) to Telegram...")
+        send_telegram(
+            digest_jobs,
+            bot_token=os.environ["TELEGRAM_BOT_TOKEN"],
+            chat_id=os.environ["TELEGRAM_CHAT_ID"],
         )
         repo.mark_sent([j.id for j in digest_jobs])
         print("  Done.")
     else:
-        print("\nNo qualifying jobs. No digest sent.")
+        print("\nNo qualifying jobs. No notifications sent.")
 
 
 if __name__ == "__main__":
