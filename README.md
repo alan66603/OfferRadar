@@ -47,7 +47,7 @@ Each module has one responsibility and can be tested independently.
 | Stage | Runtime | Database | Scheduler |
 |-------|---------|----------|-----------|
 | Local | Python script | SQLite (local) | manual / cron |
-| Cloud | AWS Lambda | SQLite on S3 | EventBridge (every 4 hours) |
+| Cloud | AWS Lambda | SQLite on S3 | EventBridge (every 4 hours on weekdays) |
 
 ---
 
