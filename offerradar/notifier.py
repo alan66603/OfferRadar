@@ -18,6 +18,8 @@ def send_telegram(jobs: list[JobPost], bot_token: str, chat_id: str) -> None:
         )
 
     text = "\n\n".join(lines)
+    if len(text) > 4096:
+        text = text[:4093] + "…"
     resp = requests.post(
         f"https://api.telegram.org/bot{bot_token}/sendMessage",
         json={"chat_id": chat_id, "text": text, "parse_mode": "HTML"},

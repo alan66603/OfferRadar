@@ -251,9 +251,9 @@ export $(grep -v '^#' .env | xargs)
 
 This creates:
 - S3 bucket for `jobs.db` and `resume.pdf` persistence
-- IAM role with Lambda execution + scoped S3 read/write permissions
+- IAM role with Lambda execution + S3 read/write/list permissions
 - Lambda function (Python 3.12, 10 min timeout, 512 MB)
-- EventBridge rule triggering every 4 hours
+- EventBridge rule triggering every 4 hours on weekdays
 
 ### Test invoke
 

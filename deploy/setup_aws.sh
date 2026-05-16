@@ -55,11 +55,18 @@ aws iam put-role-policy \
     --policy-name offerradar-s3 \
     --policy-document "{
       \"Version\":\"2012-10-17\",
-      \"Statement\":[{
-        \"Effect\":\"Allow\",
-        \"Action\":[\"s3:GetObject\",\"s3:PutObject\"],
-        \"Resource\":\"arn:aws:s3:::${BUCKET}/*\"
-      }]
+      \"Statement\":[
+        {
+          \"Effect\":\"Allow\",
+          \"Action\":[\"s3:GetObject\",\"s3:PutObject\"],
+          \"Resource\":\"arn:aws:s3:::${BUCKET}/*\"
+        },
+        {
+          \"Effect\":\"Allow\",
+          \"Action\":\"s3:ListBucket\",
+          \"Resource\":\"arn:aws:s3:::${BUCKET}\"
+        }
+      ]
     }"
 
 ROLE_ARN="arn:aws:iam::${ACCOUNT_ID}:role/$ROLE_NAME"
@@ -68,23 +75,35 @@ sleep 10
 
 echo ""
 echo "=== 3/5  Lambda function ==="
+
+# Write env vars to a temp JSON file to safely handle special characters (e.g. spaces in App Password)
+ENV_FILE="$(mktemp /tmp/offerradar-env.XXXXXX.json)"
+cat > "$ENV_FILE" << EOF
+{
+  "Variables": {
+    "GMAIL_IMAP_HOST": "${GMAIL_IMAP_HOST:-imap.gmail.com}",
+    "GMAIL_USER": "${GMAIL_USER}",
+    "GMAIL_APP_PASSWORD": "${GMAIL_APP_PASSWORD}",
+    "ANTHROPIC_API_KEY": "${ANTHROPIC_API_KEY}",
+    "TELEGRAM_BOT_TOKEN": "${TELEGRAM_BOT_TOKEN}",
+    "TELEGRAM_CHAT_ID": "${TELEGRAM_CHAT_ID}",
+    "S3_BUCKET": "${BUCKET}"
+  }
+}
+EOF
+
 aws lambda create-function \
     --function-name "$FUNCTION_NAME" \
     --runtime python3.12 \
     --role "$ROLE_ARN" \
     --handler lambda_handler.handler \
     --zip-file "fileb://$ZIP" \
-    --timeout 300 \
+    --timeout 600 \
     --memory-size 512 \
     --region "$REGION" \
-    --environment "Variables={\
-GMAIL_IMAP_HOST=${GMAIL_IMAP_HOST},\
-GMAIL_USER=${GMAIL_USER},\
-GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD},\
-ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY},\
-TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN},\
-TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID},\
-S3_BUCKET=${BUCKET}}"
+    --environment "file://$ENV_FILE"
+
+rm -f "$ENV_FILE"
 
 FUNCTION_ARN=$(aws lambda get-function \
     --function-name "$FUNCTION_NAME" \
