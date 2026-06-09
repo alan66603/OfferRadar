@@ -2,12 +2,18 @@
 import json
 import os
 import tempfile
+from datetime import date
 from offerradar.db_sync import download_file, upload_file
 from main import run_pipeline
 
 S3_BUCKET = os.environ["S3_BUCKET"]
 DB_KEY = "jobs.db"
 RESUME_KEY = "resume.pdf"
+
+
+def _days_back() -> int:
+    # Monday (weekday=0): cover Fri+Sat+Sun gap since last weekday run
+    return 3 if date.today().weekday() == 0 else 1
 
 
 def handler(event, context):
@@ -24,7 +30,12 @@ def handler(event, context):
             )
 
         try:
-            run_pipeline(db_path=db_path, resume_path=resume_path, use_unseen=True)
+            run_pipeline(
+                db_path=db_path,
+                resume_path=resume_path,
+                use_unseen=True,
+                days_back_override=_days_back(),
+            )
         finally:
             if os.path.exists(db_path):
                 print("Uploading jobs.db to S3...")

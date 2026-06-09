@@ -21,6 +21,7 @@ def run_pipeline(
     db_path: str = DB_PATH,
     resume_path: str = RESUME_PATH,
     use_unseen: bool = False,
+    days_back_override: int | None = None,
 ) -> None:
     with open(PREFS_PATH) as f:
         prefs = yaml.safe_load(f)
@@ -31,7 +32,7 @@ def run_pipeline(
     resume = extract_resume(resume_path)
     print(f"  Keywords extracted: {', '.join(resume['keywords'][:10])}")
 
-    days_back = prefs.get("days_back", 1)
+    days_back = days_back_override if days_back_override is not None else prefs.get("days_back", 1)
     mode = "UNSEEN" if use_unseen else f"past {days_back} day(s)"
     print(f"\nConnecting to Gmail IMAP ({mode})...")
     raw_emails = fetch_job_emails(
