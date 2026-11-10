@@ -10,7 +10,7 @@ work_types:
   - hybrid
   - onsite
 
-job_type: internship          # 'full-time' | 'internship' | 'both'
+job_type: both          # 'full-time' | 'internship' | 'both'
 
 salary_min_twd: null          # set to integer to filter by annual salary, null = no filter
 
@@ -21,6 +21,9 @@ max_years_experience: 2       # exclude jobs requiring 2+ years experience; null
 keywords_must:                # job must contain at least one of these
   - Cloud
   - DevOps
+  - DevSecOps
+  - Site Reliability
+  - SRE
   - Platform
   - Infrastructure
   - Software Engineer
@@ -36,18 +39,27 @@ keywords_nice:                # boost score if present
   - Ansible
   - Docker
   - Kubernetes
-  - Helm
   - CI/CD
   - GitHub Actions
-  - GitLab CI
+  - Serverless
+  - Lambda
   - Prometheus
   - Grafana
+  - Alertmanager
+  - OpenTelemetry
+  - Observability
   - Linux
+  - Bash
+  - TypeScript
+  - Java
   - FastAPI
   - Node.js
   - React
+  - Vue
   - MongoDB
-  - PostgreSQL
+  - pytest
+  - MCP
+  - LLM
   - Data Pipeline
   - Data Engineering
   - MLOps
